@@ -1,0 +1,19 @@
+# Secretos — NUNCA commitear
+.env
+.env.*
+*.local
+**/secrets*
+
+# Supabase CLI
+.supabase/
+supabase/.temp/
+
+# Dependencias / build
+node_modules/
+dist/
+.vercel/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log

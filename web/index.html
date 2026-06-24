@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>VORTA · Conectar WhatsApp</title>
+
+  <!-- ====================================================================
+       CONFIGURACIÓN  (valores públicos, salvo ONBOARD_SECRET)
+       ==================================================================== -->
+  <script>
+    const CONFIG = {
+      // Meta App "VORTA Platform" (valores públicos)
+      META_APP_ID:   "1391319849718291",
+      CONFIG_ID:     "1719626502389702",   // Config ID del Embedded Signup
+      GRAPH_VERSION: "v21.0",
+
+      // Endpoint de alta (Edge Function de Supabase)
+      WA_ONBOARD_URL: "https://iupcodfmtspifmczppje.supabase.co/functions/v1/wa-onboard",
+
+      // ⚠️ MISMO valor que el secreto ONBOARD_SECRET en Supabase.
+      //    Reemplazar antes de desplegar.
+      ONBOARD_SECRET: "PON_AQUI_EL_MISMO_ONBOARD_SECRET",
+    };
+  </script>
+
+  <style>
+    :root {
+      --bg:        #0b1120;
+      --panel:     #121a2e;
+      --panel-2:   #0f1626;
+      --border:    #243047;
+      --text:      #e6ecf5;
+      --muted:     #8b97ad;
+      --brand:     #6d5efc;
+      --brand-2:   #8b7bff;
+      --wa:        #25d366;
+      --wa-dark:   #1da851;
+      --ok:        #2bd576;
+      --err:       #ff5d6c;
+      --warn:      #ffb454;
+      --radius:    16px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(900px 500px at 80% -10%, rgba(109,94,252,.18), transparent 60%),
+        radial-gradient(700px 500px at -10% 110%, rgba(37,211,102,.10), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 460px;
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 30px 80px rgba(0,0,0,.45);
+      overflow: hidden;
+    }
+
+    .head {
+      padding: 28px 28px 8px;
+      text-align: center;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      font-size: 20px;
+    }
+    .logo .dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      box-shadow: 0 0 18px rgba(109,94,252,.8);
+    }
+    .head h1 {
+      font-size: 18px;
+      margin: 18px 0 6px;
+      font-weight: 700;
+    }
+    .head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+
+    .body { padding: 22px 28px 28px; }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 7px;
+      letter-spacing: .2px;
+    }
+    .field input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #0b1322;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      color: var(--text);
+      font-size: 14.5px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field input::placeholder { color: #50607a; }
+    .field input:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(109,94,252,.18);
+    }
+    .field .hint { font-size: 11.5px; color: #5d6b85; margin-top: 6px; }
+
+    .btn-wa {
+      width: 100%;
+      margin-top: 6px;
+      padding: 14px 18px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--wa), var(--wa-dark));
+      color: #052e16;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: transform .08s, filter .15s, opacity .15s;
+    }
+    .btn-wa:hover:not(:disabled) { filter: brightness(1.05); }
+    .btn-wa:active:not(:disabled) { transform: translateY(1px); }
+    .btn-wa:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-wa svg { width: 20px; height: 20px; }
+
+    .status {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      display: none;
+      border: 1px solid transparent;
+    }
+    .status.show { display: block; }
+    .status.info { background: rgba(109,94,252,.10); border-color: rgba(109,94,252,.35); color: #c4bcff; }
+    .status.ok   { background: rgba(43,213,118,.10); border-color: rgba(43,213,118,.35); color: #9af0c0; }
+    .status.err  { background: rgba(255,93,108,.10); border-color: rgba(255,93,108,.35); color: #ffb3ba; }
+    .status.warn { background: rgba(255,180,84,.10); border-color: rgba(255,180,84,.35); color: #ffd8a0; }
+    .status code { background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: -2px;
+      margin-right: 7px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .foot {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 11.5px;
+      color: #5d6b85;
+      line-height: 1.6;
+    }
+    .foot b { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="head">
+      <div class="logo"><span class="dot"></span> VORTA</div>
+      <h1>Conectar un número de WhatsApp</h1>
+      <p>Alta de cliente por Embedded Signup. El cliente conecta su propio número
+         oficial de Meta en su propio portafolio.</p>
+    </div>
+
+    <div class="body">
+      <div class="field">
+        <label for="nombre">Nombre del cliente</label>
+        <input id="nombre" type="text" placeholder="Ej. Carnicería Delicias" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="agente">URL del agente (url_destino)</label>
+        <input id="agente" type="url" placeholder="https://agente.cliente.com/webhook" autocomplete="off" />
+        <div class="hint">Donde el router reenviará los mensajes de este número. Debe existir antes del alta.</div>
+      </div>
+
+      <button id="btnConnect" class="btn-wa" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.82 11.82 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.515 5.26l-.999 3.648 3.973-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+        </svg>
+        Conectar WhatsApp
+      </button>
+
+      <div id="status" class="status"></div>
+
+      <div class="foot">
+        <b>Antes de conectar:</b> el número del cliente NO debe estar activo en la app de
+        WhatsApp / WhatsApp Business. Si lo está, borrar esa cuenta primero (respaldar chats).
+      </div>
+    </div>
+  </main>
+
+  <!-- ====================================================================
+       LÓGICA — Embedded Signup
+       ==================================================================== -->
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const btn   = $("btnConnect");
+    const elName = $("nombre");
+    const elUrl  = $("agente");
+
+    // Datos del WABA que llegan por el evento postMessage de Meta.
+    let sessionInfo = { phone_number_id: null, waba_id: null, business_id: null };
+
+    function setStatus(type, html) {
+      const s = $("status");
+      s.className = "status show " + type;
+      s.innerHTML = html;
+    }
+    function clearStatus() {
+      const s = $("status");
+      s.className = "status";
+      s.innerHTML = "";
+    }
+
+    // --- Validación del formulario para habilitar el botón ---
+    function validUrl(v) {
+      try { const u = new URL(v); return u.protocol === "https:" || u.protocol === "http:"; }
+      catch { return false; }
+    }
+    function refreshButton() {
+      const ok = elName.value.trim().length >= 2 && validUrl(elUrl.value.trim());
+      btn.disabled = !ok;
+    }
+    elName.addEventListener("input", refreshButton);
+    elUrl.addEventListener("input", refreshButton);
+
+    // --- Facebook JS SDK ---
+    window.fbAsyncInit = function () {
+      FB.init({
+        appId:   CONFIG.META_APP_ID,
+        autoLogAppEvents: true,
+        xfbml:   true,
+        version: CONFIG.GRAPH_VERSION,
+      });
+    };
+    (function (d, s, id) {
+      let js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    })(document, "script", "facebook-jssdk");
+
+    // --- Capturar datos del WABA (evento del Embedded Signup) ---
+    window.addEventListener("message", (event) => {
+      if (!/facebook\.com$/.test(new URL(event.origin).hostname) &&
+          !/facebook\.com$/.test(event.origin)) {
+        // Solo aceptar mensajes de facebook.com / web.facebook.com
+        try { if (!event.origin.includes("facebook.com")) return; } catch { return; }
+      }
+      let data;
+      try { data = JSON.parse(event.data); } catch { return; }
+      if (data.type !== "WA_EMBEDDED_SIGNUP") return;
+
+      if (data.event === "FINISH") {
+        sessionInfo.phone_number_id = data.data.phone_number_id || null;
+        sessionInfo.waba_id         = data.data.waba_id || null;
+        sessionInfo.business_id      = data.data.business_id || data.data.business_portfolio_id || null;
+      } else if (data.event === "CANCEL") {
+        setStatus("warn", "Conexión cancelada por el usuario en el paso: <code>" +
+          (data.data && data.data.current_step ? data.data.current_step : "—") + "</code>.");
+      } else if (data.event === "ERROR") {
+        setStatus("err", "Meta devolvió un error: <code>" +
+          (data.data && data.data.error_message ? data.data.error_message : "desconocido") + "</code>.");
+      }
+    });
+
+    // --- Lanzar el popup de Embedded Signup ---
+    btn.addEventListener("click", () => {
+      if (typeof FB === "undefined") {
+        setStatus("err", "El SDK de Facebook aún no cargó. Espera un momento y reintenta.");
+        return;
+      }
+      sessionInfo = { phone_number_id: null, waba_id: null, business_id: null };
+      clearStatus();
+      btn.disabled = true;
+      setStatus("info", '<span class="spinner"></span> Abriendo el flujo de Meta…');
+
+      FB.login(function (response) {
+        if (response.authResponse && response.authResponse.code) {
+          enviarAlta(response.authResponse.code);
+        } else {
+          setStatus("warn", "No se completó el inicio de sesión con Meta. Vuelve a intentarlo.");
+          refreshButton();
+        }
+      }, {
+        config_id: CONFIG.CONFIG_ID,
+        response_type: "code",
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: "",
+          sessionInfoVersion: "3",
+        },
+      });
+    });
+
+    // --- Enviar code + datos al backend (wa-onboard) ---
+    async function enviarAlta(code) {
+      setStatus("info", '<span class="spinner"></span> Registrando el número y guardando la ruta…');
+
+      const payload = {
+        code: code,
+        nombre_cliente: elName.value.trim(),
+        url_destino:    elUrl.value.trim(),
+        waba_id:         sessionInfo.waba_id,
+        phone_number_id: sessionInfo.phone_number_id,
+        business_id:     sessionInfo.business_id,
+      };
+
+      try {
+        const res = await fetch(CONFIG.WA_ONBOARD_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-onboard-secret": CONFIG.ONBOARD_SECRET,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const text = await res.text();
+        let body; try { body = JSON.parse(text); } catch { body = { raw: text }; }
+
+        if (res.ok) {
+          setStatus("ok",
+            "✓ <b>Cliente conectado.</b><br>" +
+            "Número (phone_number_id): <code>" + (body.phone_number_id || sessionInfo.phone_number_id || "—") + "</code><br>" +
+            "Verifica la fila en <code>wa_clientes</code> / <code>wa_rutas</code> y envía un WhatsApp de prueba.");
+          elName.value = ""; elUrl.value = "";
+        } else {
+          setStatus("err",
+            "El alta falló (HTTP " + res.status + ").<br>" +
+            "<code>" + (body.error || body.message || body.raw || "sin detalle") + "</code>");
+        }
+      } catch (err) {
+        setStatus("err", "Error de red al contactar wa-onboard: <code>" + err.message + "</code>");
+      } finally {
+        refreshButton();
+      }
+    }
+  </script>
+</body>
+</html>
