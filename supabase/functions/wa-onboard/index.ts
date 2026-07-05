@@ -38,7 +38,11 @@ Deno.serve(async (req) => {
   // ── Gate de acceso ──
   if (!APP_SECRET) return json({ error: "META_APP_SECRET no configurado" }, 500);
   if (!ONBOARD_SECRET) return json({ error: "ONBOARD_SECRET no configurado" }, 500);
-  if (req.headers.get("x-onboard-secret") !== ONBOARD_SECRET) {
+  // .trim() en ambos lados: evita 401 por un espacio/salto de linea colado al
+  // guardar el secret en Supabase o en el header del frontend.
+  const recibido = (req.headers.get("x-onboard-secret") ?? "").trim();
+  const esperado = ONBOARD_SECRET.trim();
+  if (recibido !== esperado) {
     return json({ error: "no autorizado" }, 401);
   }
 
